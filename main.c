@@ -18,9 +18,9 @@
 
 void *server_to_client(void *);
 static int flag = 0;
+static int flag0 =0;
 //Where the client socket descriptors will be stored
 static int cl_sc[MAX_CLIENTS];
-
 int main(int argc, char** argv) {
     //server structure
     struct sockaddr_in server;
@@ -111,9 +111,10 @@ int main(int argc, char** argv) {
 
 void *server_to_client(void *socket_desc) {
     //make the arguement readable 
-    const int *whichOne = (int *) socket_desc;
+    int *whichOneImported = (int *) socket_desc;
+    int whichOne = whichOneImported[0];
     //one int for retrieved data and one for his socket
-    int retrieve, socket = cl_sc[whichOne[0]];
+    int retrieve, socket = cl_sc[whichOne];
     //chat buddy socket
     int palsSocket;
 
@@ -122,17 +123,16 @@ void *server_to_client(void *socket_desc) {
     //free the string
     memset(data, 0, DATA_LENGTH);
     for (;;) {
-        //set accordingly
-        if (whichOne[0] == 0) {
-            palsSocket = cl_sc[1];
-        } else if (whichOne[0] == 1) {
-            palsSocket = cl_sc[0];
-        }
-        printf("Im %d to join my socket is %d and my pals socket is %d\n", whichOne[0], socket, palsSocket);
         //we free the string in everyloop
         memset(data, 0, DATA_LENGTH);
         //we retrieve the data
         retrieve = recvfrom(socket, data, DATA_LENGTH, 0, NULL, NULL);
+	//set accordingly before sending the message
+	if (whichOne == 0){
+		palsSocket = cl_sc[1];
+	}else if (whichOne == 1){
+		palsSocket = cl_sc[0];
+	}
         //if the user is alone in the server
         if (flag != 2) {
             char messege[] = "Server ---> You are alone in the room.\n";
@@ -149,16 +149,17 @@ void *server_to_client(void *socket_desc) {
                 //printf("\n");
                 //if the user disconnected
             } else {
+		//Inform the other user
                 char messege[] = "\nServer ---> The other user disconnected.\n";
-                puts("User disconnected!\n");
                 send(palsSocket, messege, sizeof (messege), 0);
-                int xyz = 2;
+		//inform the server
+		puts("User disconnected!\n");
+		//fix the flags
                 flag--;
                 //terminate the thread
+                int xyz = 2;
                 pthread_exit(&xyz);
             }
         }
     }
 }
-
-
