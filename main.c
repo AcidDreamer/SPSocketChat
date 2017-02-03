@@ -18,20 +18,19 @@
 
 void *server_to_client(void *);
 static int flag = 0;
-
+//Where the client socket descriptors will be stored
+static int cl_sc[MAX_CLIENTS];
 int main(int argc, char** argv) {
     //server structure
     struct sockaddr_in server;
     //client structure for the first client
-    struct sockaddr_in client0;
-    //client structure for the second client
-    struct sockaddr_in client1;
-    //all three, are of type sockaddr_in
-
+    struct sockaddr_in client;
+    //both are of type sockaddr_in
     //socket descriptor for the Server
     int server_sock_desc;
-    //Where the client socket descriptors will be stored
-    int cl_sc[3];
+
+    //if the user is first or the second user to connect
+    int whichOne[3];
     //socket descriptor for the first client
     int client_sock_desc;
     //socket descriptor for the second client
@@ -75,7 +74,7 @@ int main(int argc, char** argv) {
     }
     //Give a type of "id" to the user after accepting the connection
     flag = 0;
-    while ((client_sock_desc = accept(server_sock_desc, (struct sockaddr *) &client0, (socklen_t*) & sockaddr_len))) {
+    while ((client_sock_desc = accept(server_sock_desc, (struct sockaddr *) &client, (socklen_t*) & sockaddr_len))) {
         //If we exceeded the number of alllowed users
         if (flag >= MAX_CLIENTS) {
             //send messege informing the user
@@ -91,17 +90,17 @@ int main(int argc, char** argv) {
             //store the socket
             cl_sc[0] = client_sock_desc;
             //set id
-            cl_sc[2] = 0;
+            whichOne[0] = 0;
             puts("Client accepted");
             //second user ,same procedure
         } else if (flag == 1) {
             cl_sc[1] = client_sock_desc;
-            cl_sc[2] = 1;
+            whichOne[0] = 1;
             puts("Client accepted");
         }
         //create thread and pass cl_sc as arguement
         pthread_t sTcThread;
-        pthread_create(&sTcThread, NULL, server_to_client, (void*) cl_sc);
+        pthread_create(&sTcThread, NULL, server_to_client, (void*) whichOne);
         //move the flag counter
         flag++;
     }
@@ -111,16 +110,16 @@ int main(int argc, char** argv) {
 
 void *server_to_client(void *socket_desc) {
     //make the arguement readable 
-    int *sc_dc = (int *) socket_desc;
+    int *whichOne = (int *) socket_desc;
     //one int for retrieved data and one for his socket
-    int retrieve, socket = sc_dc[sc_dc[2]];
+    int retrieve, socket = cl_sc[whichOne[0]];
     //chat buddy socket
     int palsSocket;
     //set accordingly
-    if (sc_dc[2] == 0)
-        palsSocket = sc_dc[1];
-    else if (sc_dc[2] == 1)
-        palsSocket = sc_dc[0];
+    if (whichOne[0] == 0)
+        palsSocket = cl_sc[1];
+    else if (whichOne[0] == 1)
+        palsSocket = cl_sc[0];
     //the actual data
     char data[DATA_LENGTH];
     //free the string
@@ -139,7 +138,7 @@ void *server_to_client(void *socket_desc) {
             if (retrieve < 0) {
                 printf("Error receiving data!\n");
                 //if we retrieved the data succesfully
-            } else if (ret > 0) {
+            } else if (retrieve > 0) {
                 send(palsSocket, data, DATA_LENGTH, 0);
                 printf("server: ");
                 fputs(data, stdout);
