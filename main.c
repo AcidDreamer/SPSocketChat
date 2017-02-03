@@ -17,10 +17,10 @@
 #define ERROR -1
 
 void *server_to_client(void *);
-static int flag = 0;
-static int flag0 =0;
+static int flag[2] = {0, 0};
 //Where the client socket descriptors will be stored
 static int cl_sc[MAX_CLIENTS];
+
 int main(int argc, char** argv) {
     //server structure
     struct sockaddr_in server;
@@ -74,10 +74,24 @@ int main(int argc, char** argv) {
         exit(-1);
     }
     //Give a type of "id" to the user after accepting the connection
-    flag = 0;
     while ((client_sock_desc = accept(server_sock_desc, (struct sockaddr *) &client, (socklen_t*) & sockaddr_len))) {
-        //If we exceeded the number of alllowed users
-        if (flag >= MAX_CLIENTS) {
+        //for the first user
+        if (flag[0] == 0) {
+            //store the socket
+            cl_sc[0] = client_sock_desc;
+            //set id
+            whichOne[0] = 0;
+            //raise the flag
+            flag[0] = 1;
+            puts("Client accepted");
+            //second user ,same procedure
+        } else if (flag[1] == 0) {
+            cl_sc[1] = client_sock_desc;
+            whichOne[0] = 1;
+            //raise the flag
+            flag[1] = 1;
+            puts("Client accepted");
+        } else {
             //send messege informing the user
             char messege[] = "Connection limit exceeded ,try again later.\n";
             send(client_sock_desc, messege, sizeof (messege), 0);
@@ -86,24 +100,10 @@ int main(int argc, char** argv) {
             //continue looping
             continue;
         }
-        //for the first user
-        if (flag == 0) {
-            //store the socket
-            cl_sc[0] = client_sock_desc;
-            //set id
-            whichOne[0] = 0;
-            puts("Client accepted");
-            //second user ,same procedure
-        } else if (flag == 1) {
-            cl_sc[1] = client_sock_desc;
-            whichOne[0] = 1;
-            puts("Client accepted");
-        }
         //create thread and pass cl_sc as arguement
         pthread_t sTcThread;
         pthread_create(&sTcThread, NULL, server_to_client, (void*) whichOne);
-        //move the flag counter
-        flag++;
+
     }
     printf("Hello world");
     return 0;
@@ -115,8 +115,8 @@ void *server_to_client(void *socket_desc) {
     int whichOne = whichOneImported[0];
     //one int for retrieved data and one for his socket
     int retrieve, socket = cl_sc[whichOne];
-    //chat buddy socket
-    int palsSocket;
+    //chat buddy socket and his flag
+    int palsSocket, localFlag;
 
     //the actual data
     char data[DATA_LENGTH];
@@ -127,14 +127,16 @@ void *server_to_client(void *socket_desc) {
         memset(data, 0, DATA_LENGTH);
         //we retrieve the data
         retrieve = recvfrom(socket, data, DATA_LENGTH, 0, NULL, NULL);
-	//set accordingly before sending the message
-	if (whichOne == 0){
-		palsSocket = cl_sc[1];
-	}else if (whichOne == 1){
-		palsSocket = cl_sc[0];
-	}
+        //set accordingly before sending the message
+        if (whichOne == 0) {
+            palsSocket = cl_sc[1];
+            localFlag = 1;
+        } else if (whichOne == 1) {
+            palsSocket = cl_sc[0];
+            localFlag = 0;
+        }
         //if the user is alone in the server
-        if (flag != 2) {
+        if (flag[localFlag] != 1) {
             char messege[] = "Server ---> You are alone in the room.\n";
             send(socket, messege, sizeof (messege), 0);
         } else {
@@ -149,13 +151,13 @@ void *server_to_client(void *socket_desc) {
                 //printf("\n");
                 //if the user disconnected
             } else {
-		//Inform the other user
+                //Inform the other user
                 char messege[] = "\nServer ---> The other user disconnected.\n";
                 send(palsSocket, messege, sizeof (messege), 0);
-		//inform the server
-		puts("User disconnected!\n");
-		//fix the flags
-                flag--;
+                //inform the server
+                puts("User disconnected!\n");
+                //fix the flags
+                flag[whichOne] = 0;
                 //terminate the thread
                 int xyz = 2;
                 pthread_exit(&xyz);
