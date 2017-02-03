@@ -115,13 +115,26 @@ void *server_to_client(void *socket_desc) {
     int whichOne = whichOneImported[0];
     //one int for retrieved data and one for his socket
     int retrieve, socket = cl_sc[whichOne];
-    //chat buddy socket and his flag
+    //chat buddy socket and his flag i
     int palsSocket, localFlag;
 
     //the actual data
     char data[DATA_LENGTH];
     //free the string
     memset(data, 0, DATA_LENGTH);
+    //set accordingly before receiving the message indicating the other part of the flag
+    if (whichOne == 0) {
+        palsSocket = cl_sc[1];
+        localFlag = 1;
+    } else if (whichOne == 1) {
+        palsSocket = cl_sc[0];
+        localFlag = 0;
+    }
+    //if the user is not alone in the server
+    if (flag[localFlag] == 1) {
+        char messege[] = "Server ---> Another user entered the room.\n";
+        send(palsSocket, messege, sizeof (messege), 0);
+    }
     for (;;) {
         //we free the string in everyloop
         memset(data, 0, DATA_LENGTH);
