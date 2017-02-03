@@ -1,6 +1,6 @@
 # SPSocketChat
-Compile the main.c with gcc as such
-gcc main.c -o server 
-Run as 
-./server [port-number] 
-*without the []
+Compile the main.c with gcc as such<br>
+gcc server.c -o server -lpthread<br>
+Run as <br>
+./server [port-number] <br>
+*without the []<br>
