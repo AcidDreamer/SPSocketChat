@@ -20,6 +20,7 @@ void *server_to_client(void *);
 static int flag = 0;
 //Where the client socket descriptors will be stored
 static int cl_sc[MAX_CLIENTS];
+
 int main(int argc, char** argv) {
     //server structure
     struct sockaddr_in server;
@@ -110,21 +111,24 @@ int main(int argc, char** argv) {
 
 void *server_to_client(void *socket_desc) {
     //make the arguement readable 
-    int *whichOne = (int *) socket_desc;
+    const int *whichOne = (int *) socket_desc;
     //one int for retrieved data and one for his socket
     int retrieve, socket = cl_sc[whichOne[0]];
     //chat buddy socket
     int palsSocket;
-    //set accordingly
-    if (whichOne[0] == 0)
-        palsSocket = cl_sc[1];
-    else if (whichOne[0] == 1)
-        palsSocket = cl_sc[0];
+
     //the actual data
     char data[DATA_LENGTH];
     //free the string
     memset(data, 0, DATA_LENGTH);
     for (;;) {
+        //set accordingly
+        if (whichOne[0] == 0) {
+            palsSocket = cl_sc[1];
+        } else if (whichOne[0] == 1) {
+            palsSocket = cl_sc[0];
+        }
+        printf("Im %d to join my socket is %d and my pals socket is %d\n", whichOne[0], socket, palsSocket);
         //we free the string in everyloop
         memset(data, 0, DATA_LENGTH);
         //we retrieve the data
@@ -145,6 +149,9 @@ void *server_to_client(void *socket_desc) {
                 //printf("\n");
                 //if the user disconnected
             } else {
+                char messege[] = "\nServer ---> The other user disconnected.\n";
+                puts("User disconnected!\n");
+                send(palsSocket, messege, sizeof (messege), 0);
                 int xyz = 2;
                 flag--;
                 //terminate the thread
@@ -153,3 +160,5 @@ void *server_to_client(void *socket_desc) {
         }
     }
 }
+
+
