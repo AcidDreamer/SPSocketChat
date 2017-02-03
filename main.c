@@ -16,7 +16,8 @@
 #define DATA_LENGTH 2048
 #define ERROR -1
 
-void *connection_handler(void *);
+void *server_to_client(void *);
+static int flag = 0;
 
 int main(int argc, char** argv) {
     //server structure
@@ -29,11 +30,11 @@ int main(int argc, char** argv) {
 
     //socket descriptor for the Server
     int server_sock_desc;
+    //Where the client socket descriptors will be stored
+    int cl_sc[3];
     //socket descriptor for the first client
-    int client_sock_desc0;
+    int client_sock_desc;
     //socket descriptor for the second client
-    int client_sock_desc1;
-    //required for bind and accept
     int sockaddr_len = sizeof (struct sockaddr_in);
     //Number of bytes of a message
     int data_length;
@@ -72,124 +73,84 @@ int main(int argc, char** argv) {
         perror("Listen :");
         exit(-1);
     }
-    while ((client_sock_desc0 = accept(server_sock_desc, (struct sockaddr *) &client0, (socklen_t*) & sockaddr_len))) {
-        puts("Client accepted");
-        int data_length = 1;
-        while (data_length) {
-            data_length = recv(client_sock_desc0, data, DATA_LENGTH, 0);
-            if (data_length) {
-                send(client_sock_desc1, data, data_length, 0);
-                data[data_length] = '\0';
-                printf("Message from the other user : %s \n", data);
-            }
-
-        }
-    }
-    while ((client_sock_desc1 = accept(server_sock_desc, (struct sockaddr *) &client0, (socklen_t*) & sockaddr_len))) {
-    }
-        printf("Hello world");
-        return 0;
-    }
-
-    void *connection_handler(void *socket_desc) {
-    }
-
-
-
-    //stolen memes
-    /*
-     void send_message(char *s, int uid){
-            int i;
-            for(i=0;i<MAX_CLIENTS;i++){
-                    if(clients[i]){
-                            if(clients[i]->uid != uid){
-                                    write(clients[i]->connfd, s, strlen(s));
-                            }
-                    }
-            }
-    }
-
-     * 
-     * void strip_newline(char *s){
-            while(*s != '\0'){
-                    if(*s == '\r' || *s == '\n'){
-     *s = '\0';
-                    }
-                    s++;
-            }
-    }
-
-     */
-
-
-    /*
-    data_length = 1;
-    while(data_length){
-        data_length = recv(client_sock_desc0,data,DATA_LENGTH,0);
-        if(data_length){
-            send(client_sock_desc0,data,data_length,0);
-            data[data_length] = '\0';
-            printf("Sent messege : %s \n",data);
-        }
-    }
-    printf("Client disconnected.\n");
-    data_length = 1;
-    while (data_length) {
-        data_length = recv(client_sock_desc0, data, 6, 0);
-        if (data_length) {
-            data[data_length] = '\0';
-        }
-        int stcom = strcmp(data, "quit");
-        printf("%s data length : %d \n", &data, &stcom);
-        if (strcmp(data, "quit") == 0) {
-            close(client_sock_desc0);
-        }
-    }
-         
-    while ((data_length = recv(client_sock_desc0, data, sizeof (data), 0)) > 0) {
-        if (!strlen(data)) {
+    //Give a type of "id" to the user after accepting the connection
+    flag = 0;
+    while ((client_sock_desc = accept(server_sock_desc, (struct sockaddr *) &client0, (socklen_t*) & sockaddr_len))) {
+        //If we exceeded the number of alllowed users
+        if (flag >= MAX_CLIENTS) {
+            //send messege informing the user
+            char messege[] = "Connection limit exceeded ,try again later.\n";
+            send(client_sock_desc, messege, sizeof (messege), 0);
+            //close the connection
+            close(client_sock_desc);
+            //continue looping
             continue;
         }
-        data[data_length] = '\0';
-        printf("%s ", &*data);
-        if (strlen(" quit") == data_length && !strncmp(" quit", data, data_length)) {
-            close(client_sock_desc1);
-            puts("check 1");
+        //for the first user
+        if (flag == 0) {
+            //store the socket
+            cl_sc[0] = client_sock_desc;
+            //set id
+            cl_sc[2] = 0;
+            puts("Client accepted");
+            //second user ,same procedure
+        } else if (flag == 1) {
+            cl_sc[1] = client_sock_desc;
+            cl_sc[2] = 1;
+            puts("Client accepted");
+        }
+        //create thread and pass cl_sc as arguement
+        pthread_t sTcThread;
+        pthread_create(&sTcThread, NULL, server_to_client, (void*) cl_sc);
+        //move the flag counter
+        flag++;
+    }
+    printf("Hello world");
+    return 0;
+}
+
+void *server_to_client(void *socket_desc) {
+    //make the arguement readable 
+    int *sc_dc = (int *) socket_desc;
+    //one int for retrieved data and one for his socket
+    int retrieve, socket = sc_dc[sc_dc[2]];
+    //chat buddy socket
+    int palsSocket;
+    //set accordingly
+    if (sc_dc[2] == 0)
+        palsSocket = sc_dc[1];
+    else if (sc_dc[2] == 1)
+        palsSocket = sc_dc[0];
+    //the actual data
+    char data[DATA_LENGTH];
+    //free the string
+    memset(data, 0, DATA_LENGTH);
+    for (;;) {
+        //we free the string in everyloop
+        memset(data, 0, DATA_LENGTH);
+        //we retrieve the data
+        retrieve = recvfrom(socket, data, DATA_LENGTH, 0, NULL, NULL);
+        //if the user is alone in the server
+        if (flag != 2) {
+            char messege[] = "Server ---> You are alone in the room.\n";
+            send(socket, messege, sizeof (messege), 0);
+        } else {
+            //If an error occured
+            if (retrieve < 0) {
+                printf("Error receiving data!\n");
+                //if we retrieved the data succesfully
+            } else if (ret > 0) {
+                send(palsSocket, data, DATA_LENGTH, 0);
+                printf("server: ");
+                fputs(data, stdout);
+                //printf("\n");
+                //if the user disconnected
+            } else {
+                int xyz = 2;
+                flag--;
+                //terminate the thread
+                pthread_exit(&xyz);
+            }
         }
     }
-     */
-
-    /*
-        while (1) {
-            //we wait till the first client connects
-            puts("Waiting for a client\n");
-            if ((client_sock_desc0 = accept(server_sock_desc, (struct sockaddr *) &client0, &sockaddr_len)) == ERROR) {
-                perror("Accept :");
-                exit(-1);
-            }
-            //we inform the first client that he is alone 
-            char first_user_message[] = "You are connected , please wait for the second user to connect!\n";
-            data_length = strlen(first_user_message);
-            send(client_sock_desc0, first_user_message, data_length, 0);
-
-            //We wait for the second client
-            puts("Waiting for a client\n");
-            if ((client_sock_desc1 = accept(server_sock_desc, (struct sockaddr *) &client1, &sockaddr_len)) == ERROR) {
-                perror("Accept :");
-                exit(-1);
-            }
-            data_length = 1;
-            while (data_length) {
-                data_length = recv(client_sock_desc0, data, DATA_LENGTH, 0);
-                if (data_length) {
-                    send(client_sock_desc1, data, data_length, 0);
-                    data[data_length] = '\0';
-                    printf("Message from the other user : %s \n", data);
-                }
-            }
-
-            puts("check2");
-            close(client_sock_desc0);
-            close(client_sock_desc1);
-        }
-     */
+}
