@@ -12,7 +12,7 @@
 #include <strings.h>
 #include <stdbool.h>
 
-#define MAX_CLIENTS 2
+#define MAX_CLIENTS 4
 #define DATA_LENGTH 2048
 #define ERROR -1
 
@@ -52,6 +52,7 @@ int main(int argc, char** argv) {
         exit(ERROR);
     }
 
+    
     //Initializing the socket
     if ((server_sock_desc = socket(AF_INET, SOCK_STREAM, 0)) == ERROR) {
         perror("Server socket :");
@@ -84,6 +85,7 @@ int main(int argc, char** argv) {
         exit(-1);
     }
     int secondFlag=0;
+    puts("Server is online");
     //Give a type of "id" to the user after accepting the connection
     while ((client_sock_desc = accept(server_sock_desc, (struct sockaddr *) &client, (socklen_t*) & sockaddr_len))) {
         for(counter=0;counter<MAX_CLIENTS;counter++){
@@ -97,6 +99,7 @@ int main(int argc, char** argv) {
                 puts("Client accepted");
                 //raise the second flag
                 secondFlag=1;
+                break;
             } 
         }
         if(secondFlag==0){
@@ -152,18 +155,23 @@ void *server_to_client(void *socket_desc) {
                 Sent_to_all_others(whichOne, data, DATA_LENGTH, 0);
                 printf("server: ");
                 fputs(data, stdout);
+                printf("Sent from %d from socket %d \n",whichOne,cl_sc[whichOne]);
             //if the user disconnected
-            } else {
+            } else if(retrieve==0) {
+                close(cl_sc[whichOne]);
+                puts("check1\n");
                 //Inform the other user
-                char messege[] = "\nServer ---> The other user disconnected.\n";
-                Sent_to_all_others(whichOne, messege, sizeof (messege), 0);
+                char messege[] = "\nServer ---> A user disconnected.\n";
+                if(!Check_if_empty(whichOne))
+                    Sent_to_all_others(whichOne, messege, sizeof (messege), 0);
+                puts("check2\n");
                 //inform the server
                 puts("User disconnected!\n");
                 //fix the flags
                 flag[whichOne] = 0;
                 //terminate the thread
-                int xyz = 2;
-                pthread_exit(&xyz);
+                puts("check3\n");
+                return NULL;
             }
         }
     }
