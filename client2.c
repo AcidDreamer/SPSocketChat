@@ -19,11 +19,11 @@ void *client_to_server();
 
 int main(int argc, char *argv[]) {
     struct sockaddr_in server;
-    char message[DATA_LENGTH], server_reply[DATA_LENGTH];
+    char message[DATA_LENGTH-48], server_reply[DATA_LENGTH];
     char *username;
     int for_compare;
     char quit_msg[DATA_LENGTH] = "//quit\n";
-
+     
 
     //check arguement count
     if (argc != 3) {
@@ -32,7 +32,7 @@ int main(int argc, char *argv[]) {
     }
     
     username= argv[2];
-    printf("%s\n",username);
+    printf("Welcome,%s.Have fun chatting ,press //quit to exit any time you want!.\n",username);
 
     //Create socket
     sock = socket(AF_INET, SOCK_STREAM, 0);
@@ -65,7 +65,11 @@ int main(int argc, char *argv[]) {
             pthread_kill(cTsThread, 2);
             return 1;
         }
-        if (send(sock, message, strlen(message), 0) < 0) {
+        char *str = (char *)malloc(2500);
+        strcpy(str,argv[2]);
+        strcat(str,"->");
+        strcat(str,message);
+        if (send(sock, str,strlen(str), 0) < 0) {
             puts("Send failed");
             return ERROR;
         }
