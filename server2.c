@@ -5,7 +5,6 @@
 #include <sys/types.h>
 #include <errno.h>
 #include <netinet/in.h>
-
 #include <pthread.h> 
 #include <arpa/inet.h>
 #include <unistd.h>
@@ -20,27 +19,26 @@
 static int flag[MAX_CLIENTS] ;
 //Where the client socket descriptors will be stored
 static int cl_sc[MAX_CLIENTS];
+//client structure for the  clients
+static struct sockaddr_in client;
+//socket descriptor for the Server
+static int server_sock_desc;
+static int sockaddr_len = sizeof (struct sockaddr_in);
 
 void Sent_to_self();
 void Sent_to_all_others();
 bool Check_if_empty();
 void *server_to_client(void *);
+void *server_accepting();
 
 int main(int argc, char** argv) {
     //server structure
     struct sockaddr_in server;
-    //client structure for the first client
-    struct sockaddr_in client;
     //both are of type sockaddr_in
-    //socket descriptor for the Server
-    int server_sock_desc;
 
-    //if the user is first or the second user to connect
-    int whichOne[3];
     //socket descriptor for the first client
     int client_sock_desc;
     //socket descriptor for the second client
-    int sockaddr_len = sizeof (struct sockaddr_in);
     //Number of bytes of a message
     int data_length;
     //The actual messege
@@ -74,18 +72,49 @@ int main(int argc, char** argv) {
         exit(-1);
     }
 
-    //0 every value;
-    int counter;
-    for(counter = 0; counter<MAX_CLIENTS;counter++){
-        flag[counter]=0;
-    }
+   
     //if bind was successful listen to the port ,up to MAX_CLIENTS at the same time 
     if ((listen(server_sock_desc, 1)) == ERROR) {
         perror("Listen :");
         exit(-1);
     }
-    int secondFlag=0;
     puts("Server is online");
+    pthread_t sAThread;
+    pthread_create(&sAThread, NULL, server_accepting,NULL);
+    for(;;){
+        char command[50];
+        char *terminate_cmd="//quit\n";
+        fgets(command,50,stdin);
+        if(strcmp(command,terminate_cmd) == 0){
+            int imaquiter;
+            for(imaquiter =0 ;imaquiter<MAX_CLIENTS;imaquiter++){
+                if(flag[imaquiter]==1){
+                    puts("Client socket disconnected");
+                    close(cl_sc[imaquiter]);
+                }
+            }
+            puts("Server Socket Terminated");
+            close(server_sock_desc);
+            puts("Server closed gracefully");
+            pthread_kill(sAThread,2);
+            return 1;
+        }
+        
+    }
+    printf("Hello world");
+    return 0;
+}
+
+void *server_accepting(){
+    int client_sock_desc;
+    int secondFlag;
+    //if the user is first or the second user to connect
+    int whichOne[3];
+     //0 every value;
+    int counter;
+    for(counter = 0; counter<MAX_CLIENTS;counter++){
+        flag[counter]=0;
+    }
     //Give a type of "id" to the user after accepting the connection
     while ((client_sock_desc = accept(server_sock_desc, (struct sockaddr *) &client, (socklen_t*) & sockaddr_len))) {
         for(counter=0;counter<MAX_CLIENTS;counter++){
@@ -117,10 +146,7 @@ int main(int argc, char** argv) {
         }
         secondFlag=0;
     }
-    printf("Hello world");
-    return 0;
 }
-
 void *server_to_client(void *socket_desc) {
     //make the arguement readable 
     int *whichOneImported = (int *) socket_desc;
