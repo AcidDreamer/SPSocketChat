@@ -20,7 +20,6 @@ void *client_to_server();
 int main(int argc, char *argv[]) {
     struct sockaddr_in server;
     char message[DATA_LENGTH-48], server_reply[DATA_LENGTH];
-    char *username;
     int for_compare;
     char quit_msg[DATA_LENGTH] = "//quit\n";
      
@@ -31,8 +30,7 @@ int main(int argc, char *argv[]) {
         exit(ERROR);
     }
     
-    username= argv[2];
-    printf("Welcome,%s.Have fun chatting ,press //quit to exit any time you want!.\n",username);
+    printf("Welcome,%s.Have fun chatting ,press //quit to exit any time you want!.\n",argv[2]);
 
     //Create socket
     sock = socket(AF_INET, SOCK_STREAM, 0);
@@ -49,9 +47,10 @@ int main(int argc, char *argv[]) {
     //Connect to remote server
     if (connect(sock, (struct sockaddr *) &server, sizeof (server)) < 0) {
         perror("connect failed. Error");
-        return 1;
+        exit(ERROR);
     }
     puts("Connected\n");
+    // creating a thread to handle server messages
     pthread_t cTsThread;
     pthread_create(&cTsThread, NULL, client_to_server, NULL);
 
@@ -65,41 +64,43 @@ int main(int argc, char *argv[]) {
             pthread_kill(cTsThread, 2);
             return 1;
         }
-        char *str = (char *)malloc(2500);
-        strcpy(str,argv[2]);
-        strcat(str,"->");
-        strcat(str,message);
-        if (send(sock, str,strlen(str), 0) < 0) {
+        //check if input is empty or too short
+        if((strcmp(message,"\n")==0) || (strlen(message)<=2)){
+            puts("Input cannot be empty and messages cannot be too short");
+            continue;
+        }
+        /*
+        allocate space for a compined message and create a message type of
+        username->message
+        */
+        char *actual_msg = (char *)malloc(2500);
+        strcpy(actual_msg,argv[2]);
+        strcat(actual_msg,"->");
+        strcat(actual_msg,message);
+        //in case sending a message fails
+        if (send(sock, actual_msg,strlen(actual_msg), 0) < 0) {
             puts("Send failed");
-            return ERROR;
+            continue;
         }
     }
     return 0;
 }
 
 void *client_to_server() {
-    int retrieve;
-    //the actual data
-    char data[DATA_LENGTH];
-    //free the string
-    memset(data, 0, DATA_LENGTH);
+    int retrieve; //data we retrieve
+    char data[DATA_LENGTH];     //the actual data
+    memset(data, 0, DATA_LENGTH);    //free the string
     for (;;) {
-        //we free the string in everyloop
-        memset(data, 0, DATA_LENGTH);
-        //we retrieve the data
-        retrieve = recvfrom(sock, data, DATA_LENGTH, 0, NULL, NULL);
-        //If an error occured
-        if (retrieve < 0) {
+        memset(data, 0, DATA_LENGTH);        //we free the string in everyloop
+        retrieve = recvfrom(sock, data, DATA_LENGTH, 0, NULL, NULL);         //we retrieve the data
+        if (retrieve < 0) {         //If an error occured
             printf("Error receiving data!\n");
-            //if we retrieved the data succesfully
-        } else if (retrieve > 0) {
+        } else if (retrieve > 0) {              //if we retrieved the data succesfully
             fputs(data, stdout);
-        } else {
-            //inform the server
+        } else {    //if the server died
             puts("Server Dropped!\n");
-            //terminate the thread
-            int xyz = 2;
-            exit(0);
+            int xyz = 2;                //terminate the thread
+            exit(0);    
             pthread_exit(&xyz);
         }
     }
