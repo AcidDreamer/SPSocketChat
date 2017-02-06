@@ -21,7 +21,7 @@ int main(int argc, char *argv[]) {
     struct sockaddr_in server;                                  //server structure for the server of type sockaddr_in
     char message[DATA_LENGTH-48], server_reply[DATA_LENGTH];    //messages received & send
     int for_compare;                                            //used for strcmp
-    char quit_msg[DATA_LENGTH] = "//quit\n";                    //used for strcmp
+    char *quit_msg = "//quit\n";                                //used for strcmp
      
     if (argc != 3) {            //check arguement count
         printf("The program is used as such.\n arg0 = program , arg1 = port , arg2 = username\n");
