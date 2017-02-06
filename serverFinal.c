@@ -54,7 +54,7 @@ int main(int argc, char** argv) {
     //For AF_INET sockets this means that a socket may bind, except when  there is an active listening socket bound to the address.
     int enable = 1;
     if (setsockopt(server_sock_desc, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int)) < 0)
-        error("setsockopt(SO_REUSEADDR) failed");
+        perror("setsockopt(SO_REUSEADDR) failed");
         
     //setting up the server data structure
     server.sin_family = AF_INET; //IPv4     
